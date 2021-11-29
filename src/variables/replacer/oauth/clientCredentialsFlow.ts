@@ -18,8 +18,9 @@ class ClientCredentialsFlow implements OpenIdFlow {
   async perform(config: OpenIdConfiguration, context: OpenIdFlowContext): Promise<OpenIdInformation | false> {
     const id = this.getCacheKey(config);
     if (id) {
+      utils.report(context, '--------------  TOVI----------------------------');
       utils.report(context, 'execute OAuth2 client_credentials flow');
-      return requestOpenIdInformation(
+      var a = requestOpenIdInformation(
         {
           url: config.tokenEndpoint,
           method: 'POST',
@@ -41,6 +42,8 @@ class ClientCredentialsFlow implements OpenIdFlow {
         },
         context
       );
+      console.log(a)
+      return a;
     }
     return false;
   }

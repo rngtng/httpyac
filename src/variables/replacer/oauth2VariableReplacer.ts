@@ -8,10 +8,13 @@ import * as oauth from './oauth';
 export async function oauth2VariableReplacer(text: unknown, type: string, context: ProcessorContext): Promise<unknown> {
   if (type.toLowerCase() === 'authorization' && utils.isString(text)) {
     const match = ParserRegex.auth.oauth2.exec(text);
+    console.log(`---- ------ ---------fffffffff------- ------ ------------ ---`);
     if (match && match.groups) {
       const flow = match.groups.flow || 'client_credentials';
       const config = oauth.getOpenIdConfiguration(match.groups.variablePrefix || 'oauth2', context.variables);
       const tokenExchangeConfig = oauth.getOpenIdConfiguration(match.groups.tokenExchangePrefix, context.variables);
+
+      log.trace(`---- ------ ------------ --------- ------ ------------ ---`);
 
       const openIdFlow = getOpenIdFlow(flow);
       if (openIdFlow && config) {

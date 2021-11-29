@@ -51,7 +51,7 @@ export async function requestOpenIdInformation(
       if (models.isProcessorContext(context)) {
         await utils.logResponse(response, context);
       }
-      if (response.statusCode === 200 && utils.isString(response.body)) {
+      if (response.statusCode === 201 && utils.isString(response.body)) {
         return toOpenIdInformation(JSON.parse(response.body), time, options);
       }
     }
@@ -64,9 +64,13 @@ export function toOpenIdInformation(
   time: number,
   session: OpenIdSesssion
 ): OpenIdInformation | false {
+  console.log('token tokentokentokentoken');
+  console.log(jwtToken);
   if (isAuthToken(jwtToken)) {
     const parsedToken = utils.decodeJWT(jwtToken.access_token);
     if (parsedToken) {
+      console.log('asdsad');
+      console.log(JSON.stringify(parsedToken, null, 2));
       log.debug(JSON.stringify(parsedToken, null, 2));
     }
     return {
