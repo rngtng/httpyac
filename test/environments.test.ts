@@ -2,10 +2,14 @@ import path from 'path';
 import { cli } from '../src';
 import * as httpClientFactory from '../src/io/gotHttpClientFactory';
 
+
+// # check https://www.npmjs.com/package/mockttp
+
 describe('environments', () => {
   jest.spyOn(process, 'exit').mockImplementation();
   it('should pick up test environment', async () => {
     const mockFactory = jest.fn();
+    debugger
     jest
       .spyOn(httpClientFactory, 'initHttpClient')
       .mockImplementation(() => mockFactory);
