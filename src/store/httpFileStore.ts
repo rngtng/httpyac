@@ -56,7 +56,8 @@ export class HttpFileStore implements models.HttpFileStore {
       if (httpFileStoreEntry.promise && version <= httpFileStoreEntry.version) {
         return httpFileStoreEntry.promise;
       }
-
+      console.log(options)
+      debugger;
       httpFileStoreEntry.promise = getText()
         .then(text => this.parse(fileName, text, options))
         .then(httpFile => {
