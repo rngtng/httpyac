@@ -206,6 +206,25 @@ grant_type=client_credentials&client_id={{clientId}}&client_secret={{clientSecre
         `grant_type=client_credentials&client_id=test&client_secret=xxxx-xxxxxxx-xxxxxx-xxxx`
       );
     });
+
+    it('evaluates the json response as object', async () => {
+      initFileProvider();
+      const mockedEndpoints = await localServer.forGet('/get')
+        .thenReply(200, JSON.stringify({ foo: { test: 1 }}), { 'content-type': 'application/json' });
+
+      const result = await exec(`
+GET http://localhost:8080/get
+
+@foo={{response.parsedBody.foo}}
+
+###
+GET http://localhost:8080/get?test={{foo.test}}
+`);
+      expect(result).toBeTruthy();
+      const requests = await mockedEndpoints.getSeenRequests();
+      expect(requests[0].url).toBe('http://localhost:8080/get');
+      expect(requests[1].url).toBe('http://localhost:8080/get?test=1');
+    });
   });
 
   describe('graphql', () => {
@@ -501,7 +520,6 @@ GET  http://localhost:8080/json
       const httpFile = await build(`
 # @jwt foo
 GET  http://localhost:8080/json
-
         `);
 
       httpFile.hooks.onResponse.addHook('test', response => {
@@ -674,6 +692,7 @@ Authorization: Digest john doe
         'Digest username="john", realm="json@localhost", nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093", uri="/json", response="4d157d692f3e05a1cbe192ddbc427782", opaque="5ccc069c403ebaf9f0171e9517f40e41"'
       );
     });
+
     it('string variable', async () => {
       initFileProvider();
       const mockedEndpoints = await localServer
@@ -690,8 +709,6 @@ GET  http://localhost:8080/test
 
 ###
 #@ref foo
-
-
 GET  http://localhost:8080/test?author={{slideshow}}
       `);
 
@@ -699,6 +716,7 @@ GET  http://localhost:8080/test?author={{slideshow}}
       const requests = await mockedEndpoints.getSeenRequests();
       expect(requests[1].url).toBe('http://localhost:8080/test?author=httpyac');
     });
+
     it('object variable', async () => {
       initFileProvider();
       const mockedEndpoints = await localServer
@@ -710,15 +728,18 @@ GET  http://localhost:8080/test?author={{slideshow}}
       const result = await exec(`
 GET  http://localhost:8080/test
 
-@slideshow={{response.parsedBody.slideshow}}
+@slideshow2={{response.parsedBody.slideshow}}
+
 ###
-GET  http://localhost:8080/test?author={{slideshow.author}}
+GET  http://localhost:8080/test?author={{slideshow2.author}}
       `);
 
       expect(result).toBeTruthy();
       const requests = await mockedEndpoints.getSeenRequests();
+      expect(requests[0].url).toBe('http://localhost:8080/test');
       expect(requests[1].url).toBe('http://localhost:8080/test?author=httpyac');
     });
+
     it('direct replace variable', async () => {
       initFileProvider();
       await localServer.forGet('/test').thenReply(200, JSON.stringify({ slideshow: { author: 'httpyac' } }), {
@@ -732,8 +753,10 @@ GET  http://localhost:8080/test?author={{slideshow.author}}
 GET  http://localhost:8080/test
 
 @slideshow:={{response.parsedBody.slideshow}}
+
 ###
 GET  http://localhost:8080/text?author={{slideshow.author}}
+
 ###
 GET  http://localhost:8080/text?author={{slideshow.author}}
       `);
