@@ -35,77 +35,63 @@ describe('send', () => {
   const localServer = getLocal();
   beforeEach(() => localServer.start(8080));
   afterEach(() => localServer.stop());
+
+  async function build(code) {
+    return await new HttpFileStore().getOrCreate(
+        `any.http`,
+        async () => Promise.resolve(code),
+        0,
+        {
+          workingDir: __dirname,
+        }
+    );
+  }
+
+  async function exec(code) {
+    const httpFile = await build(code);
+
+    return send({
+      httpFile,
+    });
+  }
+
   describe('http', () => {
     it('get http', async () => {
       initFileProvider();
       const mockedEndpoints = await localServer.forGet('/get').thenReply(200);
 
-      const httpFileStore = new HttpFileStore();
-      const httpFile = await httpFileStore.getOrCreate(
-        `any.http`,
-        async () =>
-          Promise.resolve(`
-GET http://localhost:8080/get
-`),
-        0,
-        {}
-      );
-
-      const result = await send({
-        httpFile,
-      });
+      const result = await exec(`GET http://localhost:8080/get`);
       expect(result).toBeTruthy();
       const requests = await mockedEndpoints.getSeenRequests();
       expect(requests.length).toBe(1);
       expect(requests[0].headers['user-agent']).toBe('httpyac');
     });
+
     it('get http with multiline', async () => {
       initFileProvider();
       const mockedEndpoints = await localServer.forGet('/bar').thenReply(200);
-      const httpFileStore = new HttpFileStore();
-      const httpFile = await httpFileStore.getOrCreate(
-        `any.http`,
-        async () =>
-          Promise.resolve(`
+
+      const result = await exec(`
 GET http://localhost:8080
   /bar
   ?test=foo
-        `),
-        0,
-        {}
-      );
-
-      const result = await send({
-        httpFile,
-      });
+        `);
 
       const requests = await mockedEndpoints.getSeenRequests();
       expect(requests.length).toBe(1);
       expect(requests[0].path).toBe('/bar?test=foo');
       expect(result).toBeTruthy();
     });
+
     it('get http with headers', async () => {
       initFileProvider();
 
       const mockedEndpoints = await localServer.forGet('/get').thenReply(200);
-      const httpFileStore = new HttpFileStore();
-      const httpFile = await httpFileStore.getOrCreate(
-        `any.http`,
-        async () =>
-          Promise.resolve(`
+      const result = await exec(`
 GET http://localhost:8080/get
 Authorization: Bearer test
 Date: 2015-06-01
-        `),
-        0,
-        {
-          workingDir: __dirname,
-        }
-      );
-
-      const result = await send({
-        httpFile,
-      });
+        `);
 
       const requests = await mockedEndpoints.getSeenRequests();
       expect(requests.length).toBe(1);
@@ -113,33 +99,25 @@ Date: 2015-06-01
       expect(requests[0].headers.date).toBe('2015-06-01');
       expect(result).toBeTruthy();
     });
+
     it('post http', async () => {
       initFileProvider();
       const body = JSON.stringify({ foo: 'foo', bar: 'bar' }, null, 2);
       const mockedEndpoints = await localServer.forPost('/post').thenReply(200);
 
-      const httpFileStore = new HttpFileStore();
-      const httpFile = await httpFileStore.getOrCreate(
-        `any.http`,
-        async () =>
-          Promise.resolve(`
+      const result = await exec(`
 POST http://localhost:8080/post
 Content-Type: application/json
 
 ${body}
-        `),
-        0,
-        {}
-      );
-      const result = await send({
-        httpFile,
-      });
+        `);
       expect(result).toBeTruthy();
       const requests = await mockedEndpoints.getSeenRequests();
       expect(requests.length).toBe(1);
       expect(requests[0].headers['content-type']).toBe('application/json');
       expect(await requests[0].body.getText()).toBe(body);
     });
+
     it('imported body', async () => {
       const body = JSON.stringify({ foo: 'foo', bar: 'bar' }, null, 2);
       initFileProvider({
@@ -147,25 +125,12 @@ ${body}
       });
 
       const mockedEndpoints = await localServer.forPost('/post').thenReply(200);
-      const httpFileStore = new HttpFileStore();
-      const httpFile = await httpFileStore.getOrCreate(
-        `any.http`,
-        async () =>
-          Promise.resolve(`
+      const result = await exec(`
 POST http://localhost:8080/post
 Content-Type: application/json
 
 <@ ./body.json
-        `),
-        0,
-        {
-          workingDir: __dirname,
-        }
-      );
-
-      const result = await send({
-        httpFile,
-      });
+        `);
       expect(result).toBeTruthy();
 
       const requests = await mockedEndpoints.getSeenRequests();
@@ -173,31 +138,19 @@ Content-Type: application/json
       expect(requests[0].headers['content-type']).toBe('application/json');
       expect(await requests[0].body.getText()).toBe(body);
     });
+
     it('imported buffer body', async () => {
       const body = JSON.stringify({ foo: 'foo', bar: 'bar' }, null, 2);
       initFileProvider({
         'body.json': body,
       });
       const mockedEndpoints = await localServer.forPost('/post').thenReply(200);
-      const httpFileStore = new HttpFileStore();
-      const httpFile = await httpFileStore.getOrCreate(
-        `any.http`,
-        async () =>
-          Promise.resolve(`
+      const result = await exec(`
 POST http://localhost:8080/post
 Content-Type: application/json
 
 < ./body.json
-        `),
-        0,
-        {
-          workingDir: __dirname,
-        }
-      );
-
-      const result = await send({
-        httpFile,
-      });
+        `);
       expect(result).toBeTruthy();
       const requests = await mockedEndpoints.getSeenRequests();
       expect(requests.length).toBe(1);
@@ -205,16 +158,13 @@ Content-Type: application/json
       expect(await requests[0].body.getText()).toBe(body);
     });
   });
+
   describe('graphql', () => {
     it('query + operation + variables', async () => {
       initFileProvider();
       const mockedEndpoints = await localServer.forPost('/graphql').thenReply(200);
 
-      const httpFileStore = new HttpFileStore();
-      const httpFile = await httpFileStore.getOrCreate(
-        `any.http`,
-        async () =>
-          Promise.resolve(`
+      const result = await exec(`
 POST  http://localhost:8080/graphql
 
 query launchesQuery($limit: Int!){
@@ -239,14 +189,7 @@ query launchesQuery($limit: Int!){
 {
     "limit": 10
 }
-        `),
-        0,
-        {}
-      );
-
-      const result = await send({
-        httpFile,
-      });
+        `);
       expect(result).toBeTruthy();
       const requests = await mockedEndpoints.getSeenRequests();
       expect(requests.length).toBe(1);
@@ -255,14 +198,12 @@ query launchesQuery($limit: Int!){
         '{"query":"query launchesQuery($limit: Int!){\\n  launchesPast(limit: $limit) {\\n    mission_name\\n    launch_date_local\\n    launch_site {\\n      site_name_long\\n    }\\n    rocket {\\n      rocket_name\\n      rocket_type\\n    }\\n    ships {\\n      name\\n      home_port\\n      image\\n    }\\n  }\\n}","operationName":"launchesQuery","variables":{"limit":10}}'
       );
     });
+
     it('query with fragment', async () => {
       initFileProvider();
       const mockedEndpoints = await localServer.forPost('/graphql').thenReply(200);
-      const httpFileStore = new HttpFileStore();
-      const httpFile = await httpFileStore.getOrCreate(
-        `any.http`,
-        async () =>
-          Promise.resolve(`
+
+      const result = await exec(`
 fragment RocketParts on LaunchRocket {
   rocket_name
   first_stage {
@@ -296,14 +237,7 @@ query launchesQuery($limit: Int!){
 {
     "limit": 10
 }
-        `),
-        0,
-        {}
-      );
-
-      const result = await send({
-        httpFile,
-      });
+        `);
       expect(result).toBeTruthy();
       const requests = await mockedEndpoints.getSeenRequests();
       expect(requests.length).toBe(1);
@@ -312,14 +246,12 @@ query launchesQuery($limit: Int!){
         '{"query":"query launchesQuery($limit: Int!){\\n  launchesPast(limit: $limit) {\\n    mission_name\\n    launch_date_local\\n    launch_site {\\n      site_name_long\\n    }\\n    rocket {\\n      ...RocketParts\\n    }\\n  }\\n}\\nfragment RocketParts on LaunchRocket {\\n  rocket_name\\n  first_stage {\\n    cores {\\n      flight\\n      core {\\n        reuse_count\\n        status\\n      }\\n    }\\n  }\\n}","operationName":"launchesQuery","variables":{"limit":10}}'
       );
     });
+
     it('only query', async () => {
       initFileProvider();
       const mockedEndpoints = await localServer.forPost('/graphql').thenReply(200);
-      const httpFileStore = new HttpFileStore();
-      const httpFile = await httpFileStore.getOrCreate(
-        `any.http`,
-        async () =>
-          Promise.resolve(`
+
+      const result = await exec(`
 POST http://localhost:8080/graphql
 Content-Type: application/json
 
@@ -328,16 +260,7 @@ query company_query {
     coo
   }
 }
-        `),
-        0,
-        {
-          workingDir: __dirname,
-        }
-      );
-
-      const result = await send({
-        httpFile,
-      });
+        `);
       expect(result).toBeTruthy();
       const requests = await mockedEndpoints.getSeenRequests();
       expect(requests.length).toBe(1);
@@ -346,6 +269,7 @@ query company_query {
         '{"query":"query company_query {\\n  company {\\n    coo\\n  }\\n}","operationName":"company_query"}'
       );
     });
+
     it('imported query', async () => {
       initFileProvider({
         'graphql.gql': `
@@ -371,11 +295,7 @@ query launchesQuery($limit: Int!){
       });
       const mockedEndpoints = await localServer.forPost('/graphql').thenReply(200);
 
-      const httpFileStore = new HttpFileStore();
-      const httpFile = await httpFileStore.getOrCreate(
-        `any.http`,
-        async () =>
-          Promise.resolve(`
+      const result = await exec(`
 POST http://localhost:8080/graphql
 Content-Type: application/json
 
@@ -384,16 +304,7 @@ gql launchesQuery < ./graphql.gql
 {
     "limit": 10
 }
-        `),
-        0,
-        {
-          workingDir: __dirname,
-        }
-      );
-
-      const result = await send({
-        httpFile,
-      });
+        `);
       expect(result).toBeTruthy();
       const requests = await mockedEndpoints.getSeenRequests();
       expect(requests.length).toBe(1);
@@ -403,6 +314,7 @@ gql launchesQuery < ./graphql.gql
       );
     });
   });
+
   describe('metadata', () => {
     it('name + ref', async () => {
       initFileProvider();
@@ -411,11 +323,7 @@ gql launchesQuery < ./graphql.gql
         .thenReply(200, JSON.stringify({ foo: 'bar', test: 1 }), { 'content-type': 'application/json' });
       const mockedEndpoints = await localServer.forPost('/post').thenReply(200);
 
-      const httpFileStore = new HttpFileStore();
-      const httpFile = await httpFileStore.getOrCreate(
-        `any.http`,
-        async () =>
-          Promise.resolve(`
+      const httpFile = await build(`
 # @name foo
 GET  http://localhost:8080/json
 
@@ -431,15 +339,12 @@ foo={{foo.foo}}
 POST http://localhost:8080/post?test={{foo.test}}
 
 foo={{foo.foo}}
-        `),
-        0,
-        {}
-      );
+        `);
 
       const [, ...httpRegions] = httpFile.httpRegions;
       const result = await send({
         httpFile,
-        httpRegions,
+        httpRegion: httpFile.httpRegions[1],
       });
       expect(result).toBeTruthy();
       const requests = await mockedEndpoints.getSeenRequests();
@@ -448,6 +353,7 @@ foo={{foo.foo}}
       const refRequests = await refEndpoints.getSeenRequests();
       expect(refRequests.length).toBe(1);
     });
+
     it('name + import + ref', async () => {
       initFileProvider({
         'import.http': `
@@ -460,11 +366,7 @@ GET  http://localhost:8080/json
         .thenReply(200, JSON.stringify({ foo: 'bar', test: 1 }), { 'content-type': 'application/json' });
       const mockedEndpoints = await localServer.forPost('/post').thenReply(200);
 
-      const httpFileStore = new HttpFileStore();
-      const httpFile = await httpFileStore.getOrCreate(
-        `any.http`,
-        async () =>
-          Promise.resolve(`
+      const httpFile = await build(`
 
 # @import ./import.http
 ###
@@ -472,10 +374,7 @@ GET  http://localhost:8080/json
 POST http://localhost:8080/post?test={{foo.test}}
 
 foo={{foo.foo}}
-        `),
-        0,
-        {}
-      );
+        `);
 
       const result = await send({
         httpFile,
@@ -486,6 +385,7 @@ foo={{foo.foo}}
       expect(requests[0].url).toBe('http://localhost:8080/post?test=1');
       expect(await requests[0].body.getText()).toBe('foo=bar');
     });
+
     it('name + forceRef', async () => {
       initFileProvider();
       const refEndpoints = await localServer
@@ -493,11 +393,7 @@ foo={{foo.foo}}
         .thenReply(200, JSON.stringify({ foo: 'bar', test: 1 }), { 'content-type': 'application/json' });
       const mockedEndpoints = await localServer.forPost('/post').thenReply(200);
 
-      const httpFileStore = new HttpFileStore();
-      const httpFile = await httpFileStore.getOrCreate(
-        `any.http`,
-        async () =>
-          Promise.resolve(`
+      const httpFile = await build(`
 # @name foo
 GET  http://localhost:8080/json
 
@@ -514,10 +410,7 @@ foo={{foo.foo}}
 POST http://localhost:8080/post?test={{foo.test}}
 
 foo={{foo.foo}}
-        `),
-        0,
-        {}
-      );
+        `);
 
       const [, ...httpRegions] = httpFile.httpRegions;
       const result = await send({
@@ -531,31 +424,22 @@ foo={{foo.foo}}
       const refRequests = await refEndpoints.getSeenRequests();
       expect(refRequests.length).toBe(2);
     });
+
     it('disabled', async () => {
       initFileProvider();
       const mockedEndpoints = await localServer
         .forGet('/json')
         .thenReply(200, JSON.stringify({ foo: 'bar', test: 1 }), { 'content-type': 'application/json' });
 
-      const httpFileStore = new HttpFileStore();
-      const httpFile = await httpFileStore.getOrCreate(
-        `any.http`,
-        async () =>
-          Promise.resolve(`
+        const result = await exec(`
 # @disabled
 GET  http://localhost:8080/json
-        `),
-        0,
-        {}
-      );
-
-      const result = await send({
-        httpFile,
-      });
+        `);
       expect(result).toBeTruthy();
       const requests = await mockedEndpoints.getSeenRequests();
       expect(requests.length).toBe(0);
     });
+
     it('jwt', async () => {
       initFileProvider();
       await localServer.forGet('/json').thenReply(
@@ -567,18 +451,11 @@ GET  http://localhost:8080/json
         { 'content-type': 'application/json' }
       );
 
-      const httpFileStore = new HttpFileStore();
-      const httpFile = await httpFileStore.getOrCreate(
-        `any.http`,
-        async () =>
-          Promise.resolve(`
+      const httpFile = await build(`
 # @jwt foo
 GET  http://localhost:8080/json
 
-        `),
-        0,
-        {}
-      );
+        `);
 
       httpFile.hooks.onResponse.addHook('test', response => {
         expect(response?.parsedBody).toBeDefined();
@@ -590,29 +467,19 @@ GET  http://localhost:8080/json
       });
       expect(result).toBeTruthy();
     });
+
     it('loop for of', async () => {
       initFileProvider();
       const mockedEndpoints = await localServer.forGet('/json').thenReply(200);
 
-      const httpFileStore = new HttpFileStore();
-      const httpFile = await httpFileStore.getOrCreate(
-        `any.http`,
-        async () =>
-          Promise.resolve(`
+      const result = await exec(`
 {{
   exports.data = ['a', 'b', 'c'];
 }}
 ###
 # @loop for item of data
 GET  http://localhost:8080/json?test={{item}}
-        `),
-        0,
-        {}
-      );
-
-      const result = await send({
-        httpFile,
-      });
+        `);
       expect(result).toBeTruthy();
       const requests = await mockedEndpoints.getSeenRequests();
       expect(requests.length).toBe(3);
@@ -620,25 +487,15 @@ GET  http://localhost:8080/json?test={{item}}
       expect(requests[1].url).toBe('http://localhost:8080/json?test=b');
       expect(requests[2].url).toBe('http://localhost:8080/json?test=c');
     });
+
     it('loop for', async () => {
       initFileProvider();
       const mockedEndpoints = await localServer.forGet('/json').thenReply(200);
 
-      const httpFileStore = new HttpFileStore();
-      const httpFile = await httpFileStore.getOrCreate(
-        `any.http`,
-        async () =>
-          Promise.resolve(`
+      const result = await exec(`
 # @loop for 3
 GET  http://localhost:8080/json?test={{$index}}
-        `),
-        0,
-        {}
-      );
-
-      const result = await send({
-        httpFile,
-      });
+        `);
       expect(result).toBeTruthy();
       const requests = await mockedEndpoints.getSeenRequests();
       expect(requests.length).toBe(3);
@@ -646,15 +503,12 @@ GET  http://localhost:8080/json?test={{$index}}
       expect(requests[1].url).toBe('http://localhost:8080/json?test=1');
       expect(requests[2].url).toBe('http://localhost:8080/json?test=2');
     });
+
     it('loop while', async () => {
       initFileProvider();
       const mockedEndpoints = await localServer.forGet('/json').thenReply(200);
 
-      const httpFileStore = new HttpFileStore();
-      const httpFile = await httpFileStore.getOrCreate(
-        `any.http`,
-        async () =>
-          Promise.resolve(`
+      const result = await exec(`
 {{
   exports.expression = {
     index: 0,
@@ -663,14 +517,7 @@ GET  http://localhost:8080/json?test={{$index}}
 ###
 # @loop while expression.index < 3
 GET  http://localhost:8080/json?test={{expression.index++}}
-        `),
-        0,
-        {}
-      );
-
-      const result = await send({
-        httpFile,
-      });
+        `);
       expect(result).toBeTruthy();
       const requests = await mockedEndpoints.getSeenRequests();
       expect(requests.length).toBe(3);
@@ -679,6 +526,7 @@ GET  http://localhost:8080/json?test={{expression.index++}}
       expect(requests[2].url).toBe('http://localhost:8080/json?test=2');
     });
   });
+
   describe('variables', () => {
     it('file variables', async () => {
       initFileProvider();
@@ -686,92 +534,57 @@ GET  http://localhost:8080/json?test={{expression.index++}}
         .forGet('/json')
         .thenReply(200, JSON.stringify({ foo: 'bar', test: 1 }), { 'content-type': 'application/json' });
 
-      const httpFileStore = new HttpFileStore();
-      const httpFile = await httpFileStore.getOrCreate(
-        `any.http`,
-        async () =>
-          Promise.resolve(`
+      const result = await exec(`
 @foo=foo
 @bar={{foo}}bar
 GET  http://localhost:8080/json?bar={{bar}}
-        `),
-        0,
-        {}
-      );
-
-      const result = await send({
-        httpFile,
-      });
+        `);
       expect(result).toBeTruthy();
       const requests = await mockedEndpoints.getSeenRequests();
       expect(requests[0].url).toBe('http://localhost:8080/json?bar=foobar');
     });
+
     it('host', async () => {
       initFileProvider();
       const mockedEndpoints = await localServer
         .forGet('/json')
         .thenReply(200, JSON.stringify({ foo: 'bar', test: 1 }), { 'content-type': 'application/json' });
 
-      const httpFileStore = new HttpFileStore();
-      const httpFile = await httpFileStore.getOrCreate(
-        `any.http`,
-        async () =>
-          Promise.resolve(`
+      const result = await exec(`
 @host=http://localhost:8080
 GET  /json
-        `),
-        0,
-        {}
-      );
-
-      const result = await send({
-        httpFile,
-      });
+        `);
       expect(result).toBeTruthy();
       const requests = await mockedEndpoints.getSeenRequests();
       expect(requests[0].url).toBe('http://localhost:8080/json');
     });
+
     it('escape handlebar', async () => {
       initFileProvider();
       const mockedEndpoints = await localServer
         .forPost('/post')
         .thenReply(200, JSON.stringify({ foo: 'bar', test: 1 }), { 'content-type': 'application/json' });
 
-      const httpFileStore = new HttpFileStore();
-
       const escape = `\\{\\{title\\}\\}`;
-      const httpFile = await httpFileStore.getOrCreate(
-        `any.http`,
-        async () =>
-          Promise.resolve(`
+      const result = await exec(`
 POST  http://localhost:8080/post
 
 <html>
 <div>${escape}</div>
 </html>
-        `),
-        0,
-        {}
-      );
-
-      const result = await send({
-        httpFile,
-      });
+        `);
       expect(result).toBeTruthy();
       const requests = await mockedEndpoints.getSeenRequests();
       expect(await requests[0].body.getText()).toBe('<html>\n<div>{{title}}</div>\n</html>');
     });
+
     it('basic auth', async () => {
       initFileProvider();
       const mockedEndpoints = await localServer
         .forGet('/json')
         .thenReply(200, JSON.stringify({ foo: 'bar', test: 1 }), { 'content-type': 'application/json' });
 
-      const httpFileStore = new HttpFileStore();
-      const httpFile = await httpFileStore.getOrCreate(
-        `any.http`,
-        async () =>
-          Promise.resolve(`
+        const result = await exec(`
 GET  http://localhost:8080/json
 Authorization: Basic john:doe
 
@@ -779,20 +592,14 @@ Authorization: Basic john:doe
 GET  http://localhost:8080/json
 Authorization: Basic john doe
 
-        `),
-        0,
-        {}
-      );
-
-      const result = await send({
-        httpFile,
-      });
+        `);
       expect(result).toBeTruthy();
       const requests = await mockedEndpoints.getSeenRequests();
       expect(requests.length).toBe(2);
       expect(requests[0].headers.authorization).toBe('Basic am9objpkb2U=');
       expect(requests[1].headers.authorization).toBe('Basic am9objpkb2U=');
     });
+
     it('digest auth', async () => {
       initFileProvider();
       const missingAuthEndpoints = await localServer
@@ -807,21 +614,10 @@ Authorization: Basic john doe
         .matching(request => !!request.headers.authorization)
         .thenReply(200);
 
-      const httpFileStore = new HttpFileStore();
-      const httpFile = await httpFileStore.getOrCreate(
-        `any.http`,
-        async () =>
-          Promise.resolve(`
+        const result = await exec(`
 GET  http://localhost:8080/json
 Authorization: Digest john doe
-        `),
-        0,
-        {}
-      );
-
-      const result = await send({
-        httpFile,
-      });
+        `);
       expect(result).toBeTruthy();
       const authMissingRequests = await missingAuthEndpoints.getSeenRequests();
       expect(authMissingRequests.length).toBe(1);
