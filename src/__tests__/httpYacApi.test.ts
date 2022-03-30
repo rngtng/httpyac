@@ -206,6 +206,25 @@ grant_type=client_credentials&client_id={{clientId}}&client_secret={{clientSecre
         `grant_type=client_credentials&client_id=test&client_secret=xxxx-xxxxxxx-xxxxxx-xxxx`
       );
     });
+
+    it('evaluates the json response as object', async () => {
+      initFileProvider();
+      const mockedEndpoints = await localServer.forGet('/get')
+        .thenReply(200, JSON.stringify({ foo: { test: 1 }}), { 'content-type': 'application/json' });
+
+      const result = await exec(`
+GET http://localhost:8080/get
+
+@foo = {{response.parsedBody.foo}}
+
+###
+GET http://localhost:8080/get?test={{foo.test}}
+`);
+      expect(result).toBeTruthy();
+      const requests = await mockedEndpoints.getSeenRequests();
+      expect(requests[0].url).toBe('http://localhost:8080/get');
+      expect(requests[1].url).toBe('http://localhost:8080/get?test=1');
+    });
   });
 
   describe('graphql', () => {
