@@ -210,7 +210,7 @@ grant_type=client_credentials&client_id={{clientId}}&client_secret={{clientSecre
     it('evaluates the json response as object', async () => {
       initFileProvider();
       const mockedEndpoints = await localServer.forGet('/get')
-        .thenReply(200, JSON.stringify({ foo: { test: 1 }}), { 'content-type': 'application/json' });
+        .thenReply(200, JSON.stringify({ foo: { test: '1' }}), { 'content-type': 'application/json' });
 
       const result = await exec(`
 GET http://localhost:8080/get
@@ -225,6 +225,28 @@ GET http://localhost:8080/get?test={{foo.test}}
       expect(requests[0].url).toBe('http://localhost:8080/get');
       expect(requests[1].url).toBe('http://localhost:8080/get?test=1');
     });
+  });
+
+  it('object variable', async () => {
+    initFileProvider();
+    const mockedEndpoints = await localServer.forGet('/test')
+      .thenReply(200, JSON.stringify({ slideshow: { author: 'httpyac' } }), {
+        'content-type': 'application/json',
+      });
+
+    const result = await exec(`
+GET  http://localhost:8080/test
+
+@slideshow2={{response.parsedBody.slideshow}}
+
+###
+GET  http://localhost:8080/test?author={{slideshow2.author}}
+    `);
+
+    expect(result).toBeTruthy();
+    const requests = await mockedEndpoints.getSeenRequests();
+    expect(requests[0].url).toBe('http://localhost:8080/test');
+    expect(requests[1].url).toBe('http://localhost:8080/test?author=httpyac');
   });
 
   describe('graphql', () => {
