@@ -685,4 +685,24 @@ GET  http://localhost:8080/text?another_author={{slideshow.author}}
       expect(requests[1].url).toBe('http://localhost:8080/text?another_author=httpyac');
     });
   });
+
+  it('lazy replace variable', async () => {
+    initFileProvider();
+    await localServer.forGet('/test').thenJson(200, { slideshow: { author: 'httpyac' } });
+    const mockedEndpoints = await localServer.forGet('/text').thenJson(200, { slideshow: { author: 'foo' } });
+    const result = await exec(`
+GET http://localhost:8080/test
+
+@slideshow={{response.parsedBody.slideshow}}
+###
+GET http://localhost:8080/text?author={{slideshow.author}}
+
+###
+GET http://localhost:8080/text?another_author={{slideshow.author}}
+    `);
+    expect(result).toBeTruthy();
+    const requests = await mockedEndpoints.getSeenRequests();
+    expect(requests[0].url).toBe('http://localhost:8080/text?author=httpyac');
+    expect(requests[1].url).toBe('http://localhost:8080/text?another_author=foo');
+  });
 });
