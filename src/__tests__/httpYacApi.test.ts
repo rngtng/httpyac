@@ -698,11 +698,11 @@ GET http://localhost:8080/test
 GET http://localhost:8080/text?author={{slideshow.author}}
 
 ###
-GET http://localhost:8080/text?another_author={{slideshow.author}}
+GET http://localhost:8080/text?bnother_author={{slideshow.author}}
     `);
     expect(result).toBeTruthy();
     const requests = await mockedEndpoints.getSeenRequests();
     expect(requests[0].url).toBe('http://localhost:8080/text?author=httpyac');
-    expect(requests[1].url).toBe('http://localhost:8080/text?another_author=foo');
+    expect(requests[1].url).toBe('http://localhost:8080/text?bnother_author=foo');
   });
 });
