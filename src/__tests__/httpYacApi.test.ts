@@ -50,7 +50,27 @@ describe('send', () => {
     });
   }
 
-  describe('http', () => {
+  describe('ahttp2', () => {
+
+    it('evaluates the json response as object', async () => {
+      initFileProvider();
+      const mockedEndpoints = await localServer.forGet('/get')
+        .thenReply(200, JSON.stringify({ foo: "1" }), { 'content-type': 'application/json' });
+
+      const result = await exec(`
+GET http://localhost:8080/get
+
+@foo={{response.parsedBody.foo}}
+
+###
+GET http://localhost:8080/get?test={{foo}}
+`);
+      expect(result).toBeTruthy();
+      const requests = await mockedEndpoints.getSeenRequests();
+      expect(requests[0].url).toBe('http://localhost:8080/get');
+      expect(requests[1].url).toBe('http://localhost:8080/get?test=1');
+    });
+
     it('get http', async () => {
       initFileProvider();
       const mockedEndpoints = await localServer.forGet('/get').thenReply(200);
@@ -61,7 +81,9 @@ describe('send', () => {
       expect(requests.length).toBe(1);
       expect(requests[0].headers['user-agent']).toBe('httpyac');
     });
+  });
 
+  describe('http', () => {
     it('get http with multiline', async () => {
       initFileProvider();
       const mockedEndpoints = await localServer.forGet('/bar').thenReply(200);
@@ -93,24 +115,6 @@ Date: 2015-06-01
       expect(requests[0].headers.authorization).toBe('Bearer test');
       expect(requests[0].headers.date).toBe('2015-06-01');
       expect(result).toBeTruthy();
-    });
-
-    it('post http', async () => {
-      initFileProvider();
-      const body = JSON.stringify({ foo: 'foo', bar: 'bar' }, null, 2);
-      const mockedEndpoints = await localServer.forPost('/post').thenReply(200);
-
-      const result = await exec(`
-POST http://localhost:8080/post
-Content-Type: application/json
-
-${body}
-        `);
-      expect(result).toBeTruthy();
-      const requests = await mockedEndpoints.getSeenRequests();
-      expect(requests.length).toBe(1);
-      expect(requests[0].headers['content-type']).toBe('application/json');
-      expect(await requests[0].body.getText()).toBe(body);
     });
 
     it('post json variable', async () => {
@@ -174,7 +178,9 @@ Content-Type: application/json
       expect(requests[0].headers['content-type']).toBe('application/json');
       expect(await requests[0].body.getText()).toBe(body);
     });
+
     it('x-www-form-urlencoded', async () => {
+      initFileProvider();
       const mockedEndpoints = await localServer.forPost('/post').thenReply(200);
       const httpFileStore = new HttpFileStore();
       const httpFile = await httpFileStore.getOrCreate(
@@ -205,25 +211,6 @@ grant_type=client_credentials&client_id={{clientId}}&client_secret={{clientSecre
       expect(await requests[0].body.getText()).toBe(
         `grant_type=client_credentials&client_id=test&client_secret=xxxx-xxxxxxx-xxxxxx-xxxx`
       );
-    });
-
-    it('evaluates the json response as object', async () => {
-      initFileProvider();
-      const mockedEndpoints = await localServer.forGet('/get')
-        .thenReply(200, JSON.stringify({ foo: { test: 1 }}), { 'content-type': 'application/json' });
-
-      const result = await exec(`
-GET http://localhost:8080/get
-
-@foo={{response.parsedBody.foo}}
-
-###
-GET http://localhost:8080/get?test={{foo.test}}
-`);
-      expect(result).toBeTruthy();
-      const requests = await mockedEndpoints.getSeenRequests();
-      expect(requests[0].url).toBe('http://localhost:8080/get');
-      expect(requests[1].url).toBe('http://localhost:8080/get?test=1');
     });
   });
 

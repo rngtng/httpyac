@@ -51,7 +51,7 @@
     "eslint": "eslint src --ext ts",
     "lint": "npm run format && npm run eslint && npm run lockfile-lint && npm run packageJson-lint",
     "prepare": "husky install",
-    "test": "jest"
+    "test": "jest src/__tests__"
   },
   "lint-staged": {
     "*.js": [
