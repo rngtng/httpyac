@@ -1,0 +1,10 @@
+# scenario2
+@host = https://httpbin.org
+###
+GET /anything?traceId1={{response.parsedBody.headers["X-Amzn-Trace-Id"]}}
+
+###
+GET /anything?traceId2={{response.parsedBody.headers["X-Amzn-Trace-Id"]}}
+
+###
+GET /anything?traceId3={{response.parsedBody.headers["X-Amzn-Trace-Id"]}}

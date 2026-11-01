@@ -1,0 +1,8 @@
+@resource=tasks
+@host:=https://httpbin.org/anything/{{resource}}
+###
+@resource=jobs
+GET {{host}}
+
+###
+GET {{host}}
